@@ -1,0 +1,63 @@
+    Initialization
+
+        A FastAPI application is created to serve HTTP endpoints.
+
+        On startup, a local language model (Qwen 3-0.6B) and its tokenizer are loaded into memory.
+
+        A background worker thread is launched, along with an in-memory First-In-First-Out queue and a FAISS vector index for later semantic search.
+
+    Incoming Chat Requests
+
+        When a client POSTs to /chat with a message, the system:
+
+            Converts the text to lowercase.
+
+            Scans for keywords to classify the message into one or more of four categories: Irrelevant, Question, Bug, or Service Outage.
+
+            Assigns a unique request ID and marks the request as “Waiting.”
+
+            Places the ID into the FIFO queue and immediately returns a response that includes the request ID, initial status, and queue position.
+
+    Sequential Processing
+
+        The background worker continuously pulls the next request ID from the queue.
+
+        It locks processing to ensure only one request is handled at a time.
+
+        The request’s status is updated to “Processing,” and timing begins.
+
+        The original user message is sent to the local LLM, which generates a reply in the appropriate language (Persian or English).
+
+        Once the model returns a response, processing and wait times are recorded, and the status is set to “Completed.”
+
+    Embedding and Indexing
+
+        For each completed interaction (user message + model response), a semantic embedding is computed by averaging the model’s final hidden layer.
+
+        This embedding vector is added to a FAISS index so that future search queries can find semantically similar past conversations.
+
+    Additional Endpoints
+
+        GET /tasks
+        Returns all requests categorized as Bug or Outage, sorted so that bug reports come first (highest priority), followed by outage reports.
+
+        GET /metrics
+        Provides:
+
+            Total number of requests processed.
+
+            Average response time in milliseconds.
+
+            A count of how many messages fell into each category.
+
+        GET /search?q=...
+        Takes a text query, computes its embedding, and returns the 10 most semantically similar past exchanges based on FAISS distances.
+
+        POST /autochat
+        Gathers up to the last five completed conversations, constructs a chat-history prompt, appends the new user message, and asks the model to continue the dialogue in context.
+
+    Multilingual Support
+
+        The LLM automatically responds in Persian if the user’s message is in Persian, or in English if the message is in English.
+
+By organizing requests into a strict queue, tagging them by category, tracking performance metrics, and providing both direct chat and rich querying endpoints, this design ensures reliable, orderly processing and powerful search and analytics capabilities.
