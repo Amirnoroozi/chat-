@@ -1,0 +1,103 @@
+# Sequential Queue Chat API
+
+A FastAPI-based chat service that processes requests sequentially, classifies user messages into categories (Irrelevant, Question, Bug, Outage), prioritizes actionable tasks, and provides metrics and semantic search via a FAISS vector index. Uses a local LLM (Qwen/Qwen3-0.6B) to generate bilingual (English/Persian) responses.
+
+---
+
+## Features
+
+* **Sequential Processing**: Ensures only one request is handled at a time using a FIFO queue and background worker.
+* **Message Classification**: Tags each message as Irrelevant, Question, Bug, or Outage (multiple tags supported).
+* **Task Prioritization**: Extracts Bug and Outage messages into `/tasks`, prioritizing bug reports.
+* **Metrics**: Provides total request count, average response time (ms), and category counts via `/metrics`.
+* **Semantic Search**: Embeds Q\&A pairs and supports vector search to return top 10 similar exchanges via `/search?q=...`.
+* **Auto-Chat**: Builds conversational context from the last five interactions to generate context-aware replies at `/autochat`.
+* **Bilingual Support**: Automatically responds in Persian or English based on input language.
+
+---
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone git@github.com:YOUR_ORG/sequential-queue-chat-api.git
+   cd sequential-queue-chat-api
+   ```
+2. Create and activate a virtual environment:
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+3. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+---
+
+## Running the Service
+
+Start the API server with Uvicorn:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+The OpenAPI docs will be available at `http://localhost:8000/docs`.
+
+---
+
+## Endpoints
+
+* **POST `/chat`**
+
+  * Request body: `{ "message": "your text" }`
+  * Returns: initial status, request ID, queue position.
+
+* **GET `/tasks`**
+
+  * Returns: list of all Bug/Outage messages sorted by priority.
+
+* **GET `/metrics`**
+
+  * Returns:
+
+    * `total_requests` (integer)
+    * `average_response_time_ms` (integer)
+    * `category_counts` (dictionary)
+
+* **GET `/search?q=...`**
+
+  * Returns: top 10 semantically similar past exchanges.
+
+* **POST `/autochat`**
+
+  * Request body: `{ "message": "your text" }`
+  * Uses the last five exchanges to build context and generate a reply.
+
+---
+
+## Directory Structure
+
+```
+├── main.py            # Core FastAPI application
+├── requirements.txt   # Python dependencies
+└── README.md          # Project documentation
+```
+
+---
+
+## Notes
+
+* Ensure `transformers`, `torch`, and `faiss-cpu` are installed for local LLM and vector search.
+* Adjust `model_name` in `main.py` if using a different local model.
+* The queue worker runs as a daemon thread and will process requests in the background.
+
+---
+
+## License
+
+MIT © Your Name or Organization
